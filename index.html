@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SENTINEL — Six-Agent Autonomous Software Reliability</title>
+<meta name="description" content="SENTINEL is a six-agent architecture for autonomous software reliability: it takes a production failure from raw signal to a verified root cause and repair plan. Interactive demonstration by Guru Datha Kandanathi Chittem.">
+<style>
+  :root{
+    --bg:#0a0e14; --panel:#101623; --panel2:#0d1220; --line:#1e2a3d;
+    --text:#dbe4f0; --dim:#8fa3bd; --faint:#5c6f88;
+    --accent:#4da3ff; --green:#3fb96f; --amber:#e0a63f; --red:#e05c5c; --violet:#9a7bff;
+    --mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.55}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+  header{border-bottom:1px solid var(--line);background:rgba(10,14,20,.92);position:sticky;top:0;z-index:10;backdrop-filter:blur(6px)}
+  .nav{display:flex;align-items:center;justify-content:space-between;padding:14px 0}
+  .brand{font-family:var(--mono);font-weight:700;letter-spacing:.18em;font-size:18px;color:var(--text)}
+  .brand span{color:var(--accent)}
+  .nav .links a{color:var(--dim);margin-left:18px;font-size:14px}
+  .nav .links a:hover{color:var(--text);text-decoration:none}
+  .hero{padding:56px 0 30px}
+  .kicker{font-family:var(--mono);color:var(--accent);font-size:13px;letter-spacing:.22em;text-transform:uppercase}
+  h1{font-size:42px;line-height:1.15;margin:14px 0 16px;font-weight:800}
+  h1 .hl{color:var(--accent)}
+  .lede{color:var(--dim);font-size:18px;max-width:760px}
+  .hero-meta{margin-top:22px;display:flex;gap:10px;flex-wrap:wrap}
+  .chip{font-family:var(--mono);font-size:12.5px;border:1px solid var(--line);border-radius:999px;padding:6px 12px;color:var(--dim);background:var(--panel2)}
+  .chip b{color:var(--text)}
+  section{padding:34px 0}
+  h2{font-size:24px;margin-bottom:8px}
+  .sub{color:var(--dim);max-width:780px;margin-bottom:20px}
+  .console{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .console-head{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--panel2);flex-wrap:wrap;gap:10px}
+  .dots{display:flex;gap:7px}
+  .dots i{width:11px;height:11px;border-radius:50%;display:block}
+  .dots i:nth-child(1){background:#e05c5c}.dots i:nth-child(2){background:#e0a63f}.dots i:nth-child(3){background:#3fb96f}
+  .console-title{font-family:var(--mono);font-size:13px;color:var(--dim);letter-spacing:.08em}
+  .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  select{background:#0a0f18;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:9px 10px;font-size:14px;max-width:100%}
+  button.run{background:var(--accent);color:#06101f;border:none;border-radius:8px;padding:10px 18px;font-weight:700;font-size:14px;cursor:pointer}
+  button.run:disabled{opacity:.45;cursor:default}
+  button.ghost{background:transparent;color:var(--dim);border:1px solid var(--line);border-radius:8px;padding:9px 14px;font-size:14px;cursor:pointer}
+  .pipeline{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;padding:16px}
+  .agent{border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--panel2);min-height:96px;transition:border-color .3s, box-shadow .3s}
+  .agent .an{font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.1em}
+  .agent .at{font-weight:700;font-size:13.5px;margin:4px 0 4px;line-height:1.3}
+  .agent .as{font-family:var(--mono);font-size:11.5px;color:var(--faint)}
+  .agent.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent), 0 0 18px rgba(77,163,255,.15)}
+  .agent.active .as{color:var(--amber)}
+  .agent.done{border-color:#24513a}
+  .agent.done .as{color:var(--green)}
+  .agent.challenged{border-color:#5a3a3a}
+  .log{background:#070a10;border-top:1px solid var(--line);font-family:var(--mono);font-size:12.8px;line-height:1.65;padding:14px 16px;height:300px;overflow-y:auto;white-space:pre-wrap;word-break:break-word}
+  .log .t{color:var(--faint)}
+  .log .ag{color:var(--accent)}
+  .log .ok{color:var(--green)}
+  .log .warn{color:var(--amber)}
+  .log .bad{color:var(--red)}
+  .log .vv{color:var(--violet)}
+  .verdict{display:none;border-top:1px solid var(--line);padding:18px 16px;background:var(--panel2)}
+  .verdict.show{display:block}
+  .verdict h3{font-size:17px;margin-bottom:10px}
+  .vgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .vbox{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--panel)}
+  .vbox .vt{font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;color:var(--faint);text-transform:uppercase;margin-bottom:6px}
+  .vbox p,.vbox li{font-size:14px;color:var(--text)}
+  .vbox ul{padding-left:18px}
+  .conf{font-family:var(--mono);color:var(--green);font-weight:700}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .card{border:1px solid var(--line);border-radius:12px;padding:16px;background:var(--panel)}
+  .card .an{font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:.12em}
+  .card h3{font-size:16px;margin:6px 0}
+  .card p{color:var(--dim);font-size:14px}
+  .arch{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:18px}
+  .arch ul{padding-left:20px;color:var(--dim)}
+  .arch li{margin-bottom:8px}
+  .arch b{color:var(--text)}
+  .honest{border-left:3px solid var(--amber);background:var(--panel2);padding:12px 16px;color:var(--dim);font-size:14.5px;border-radius:0 8px 8px 0}
+  footer{border-top:1px solid var(--line);padding:26px 0 40px;color:var(--faint);font-size:14px}
+  footer .row{display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+  @media(max-width:860px){
+    .pipeline{grid-template-columns:repeat(3,1fr)}
+    .grid3{grid-template-columns:1fr}
+    .vgrid{grid-template-columns:1fr}
+    h1{font-size:32px}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap nav">
+    <div class="brand">SENTINEL<span>.</span></div>
+    <div class="links">
+      <a href="#console">Live demo</a>
+      <a href="#agents">Agents</a>
+      <a href="#architecture">Architecture</a>
+      <a href="https://gurudatha-portfolio.vercel.app/" target="_blank" rel="noopener">Portfolio</a>
+      <a href="https://github.com/KcDatha" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="hero">
+    <div class="kicker">Multi-Agent Systems · LangGraph · Software Reliability</div>
+    <h1>Six agents take a production failure from raw signal to a <span class="hl">verified repair plan</span>.</h1>
+    <p class="lede">SENTINEL is an architecture for autonomous software reliability. A Mission Controller dispatches specialist agents to analyse a failure, form and test hypotheses, isolate the root cause, and draft a repair — then an Adversarial Verification agent tries to tear the conclusion down before anyone trusts it. The engineering is in the brakes: no finding ships until it survives challenge.</p>
+    <div class="hero-meta">
+      <div class="chip"><b>6</b> specialist agents</div>
+      <div class="chip"><b>LangGraph</b> state-graph orchestration</div>
+      <div class="chip"><b>Verification gates</b> regression · edge cases · output validation</div>
+      <div class="chip"><b>Human-in-the-loop</b> low-confidence escalation</div>
+    </div>
+  </div>
+
+  <section id="console">
+    <h2>Live demonstration</h2>
+    <p class="sub">Pick a production incident and run the pipeline. The console replays a full SENTINEL analysis: each agent works in sequence, states its evidence, and hands structured state to the next — the same flow the LangGraph design executes.</p>
+    <div class="console">
+      <div class="console-head">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="dots"><i></i><i></i><i></i></div>
+          <div class="console-title">SENTINEL // RELIABILITY CONSOLE</div>
+        </div>
+        <div class="controls">
+          <select id="incident"></select>
+          <button class="run" id="runBtn">Run analysis</button>
+          <button class="ghost" id="resetBtn">Reset</button>
+        </div>
+      </div>
+      <div class="pipeline" id="pipeline"></div>
+      <div class="log" id="log"></div>
+      <div class="verdict" id="verdict"></div>
+    </div>
+  </section>
+
+  <section id="agents">
+    <h2>The six agents</h2>
+    <p class="sub">Each agent has one job, a bounded toolset, and a structured output contract. Specialisation is what makes the verification step meaningful — the agent checking the work is not the agent that produced it.</p>
+    <div class="grid3" id="agentCards"></div>
+  </section>
+
+  <section id="architecture">
+    <h2>Architecture</h2>
+    <p class="sub">SENTINEL is designed as a LangGraph state graph: shared state, conditional routing, and gates that can send work backwards as well as forwards.</p>
+    <div class="arch">
+      <ul>
+        <li><b>State graph orchestration.</b> Agents read and write a single typed state object (incident, evidence, hypotheses, verdicts), so every conclusion is traceable to the evidence that produced it.</li>
+        <li><b>Conditional routing.</b> The Mission Controller dispatches based on failure class and confidence; low-confidence branches loop back for more evidence instead of guessing forward.</li>
+        <li><b>Verification gates.</b> The Adversarial Verification agent runs regression thinking, edge cases, and output validation against every root-cause claim — a claim that fails challenge returns to the Hypothesis agent, not to production.</li>
+        <li><b>Human-in-the-loop.</b> Cases below the confidence threshold escalate to an engineer with the full evidence trail attached. Automation handles the volume; humans keep the judgment calls.</li>
+        <li><b>Auditability by construction.</b> Every agent action is logged against the incident state, producing the same kind of audit trail regulated production systems require.</li>
+      </ul>
+    </div>
+    <p class="honest" style="margin-top:16px"><b style="color:var(--text)">An honest note:</b> this page is an interactive demonstration of the SENTINEL architecture — the incidents are realistic scenarios and the console replays the designed agent flow end to end. SENTINEL was designed by Guru Datha Kandanathi Chittem as an architecture project; the production systems behind the metrics on his résumé are the multi-agent KYC platform and RAG pipeline described on his <a href="https://gurudatha-portfolio.vercel.app/" target="_blank" rel="noopener">portfolio</a>.</p>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap row">
+    <div>SENTINEL — designed &amp; built by <a href="https://www.linkedin.com/in/gurudatha-kandanathi-chittem/" target="_blank" rel="noopener">Guru Datha Kandanathi Chittem</a></div>
+    <div><a href="https://gurudatha-portfolio.vercel.app/" target="_blank" rel="noopener">Portfolio</a> · <a href="https://github.com/KcDatha" target="_blank" rel="noopener">GitHub</a> · <a href="https://gurudatha-portfolio.vercel.app/gurudatha.pdf" target="_blank" rel="noopener">Résumé</a></div>
+  </div>
+</footer>
+
+<script>
+const AGENTS = [
+  {id:"controller", n:"01", name:"Mission Controller", role:"Triage & dispatch", desc:"Classifies the failure, assembles the incident state, and dispatches specialists. Owns routing: forward on confidence, backward on doubt."},
+  {id:"analyst", n:"02", name:"Codebase Analyst", role:"Evidence gathering", desc:"Maps the blast radius across services, recent changes, and dependency graphs. Produces the evidence pack every later agent works from."},
+  {id:"hypothesis", n:"03", name:"Failure Hypothesis", role:"Candidate causes", desc:"Generates ranked failure hypotheses from the evidence, each with the observation that would confirm or kill it."},
+  {id:"rootcause", n:"04", name:"Root-Cause", role:"Isolation & proof", desc:"Tests hypotheses against logs, metrics, and code paths until one cause explains every symptom — including the timing."},
+  {id:"repair", n:"05", name:"Repair", role:"Fix planning", desc:"Drafts the smallest safe repair: the change, its blast radius, rollback path, and the regression coverage that must accompany it."},
+  {id:"verifier", n:"06", name:"Adversarial Verification", role:"Challenge & gate", desc:"Argues against the root cause and the repair. Tries to falsify both. Nothing is marked verified until the challenge fails to break it."}
+];
+
+const INCIDENTS = [
+  {
+    id:"payments",
+    label:"Payments API — cascading timeouts under load",
+    signal:"p99 latency 240ms → 8.2s · error rate 0.3% → 11% · Kafka consumer lag 1.2M msgs",
+    steps:{
+      controller:[
+        ["t","[signal] alert: payments-api p99 latency 8.2s, error rate 11%, consumer lag climbing"],
+        ["ag","MISSION CONTROLLER ▸ incident INC-1047 opened · class: latency/cascade · severity: SEV-2"],
+        ["ag","dispatching Codebase Analyst — blast radius first, hypotheses second"]
+      ],
+      analyst:[
+        ["ag","CODEBASE ANALYST ▸ 3 services in path: payments-api → ledger-writer → Kafka topic payments.settled"],
+        ["t","deploy diff (14:02): retry policy changed on ledger client — maxRetries 2 → 5, backoff removed"],
+        ["t","metrics: ledger-writer thread pool saturated 14:07, 5 min after latency knee"],
+        ["t","evidence pack sealed: deploy diff, pool metrics, lag curve, timeout budget map"]
+      ],
+      hypothesis:[
+        ["ag","FAILURE HYPOTHESIS ▸ H1 (0.78): retry storm — client retries amplify load on a slowing ledger-writer"],
+        ["ag","H2 (0.31): Kafka broker degradation — would show lag without latency knee first"],
+        ["ag","H3 (0.18): downstream DB lock contention — would surface in ledger-writer DB timings"],
+        ["t","discriminator for H1: retry attempts/sec should spike before pool saturation"]
+      ],
+      rootcause:[
+        ["ag","ROOT-CAUSE ▸ retry attempts/sec: 40 → 2,900 at 14:04 — before saturation at 14:07 ✓ H1 discriminator holds"],
+        ["t","H2 rejected: broker latency flat throughout. H3 rejected: DB query p95 unchanged"],
+        ["ok","ROOT CAUSE: removing backoff while raising retries 2→5 turned a 900ms ledger slowdown into a self-amplifying retry storm; each timeout generated up to 5 new requests against a saturated pool"]
+      ],
+      repair:[
+        ["ag","REPAIR ▸ plan drafted (4 steps):"],
+        ["t","1) restore exponential backoff + jitter; cap retries at 2 for non-idempotent-safe window"],
+        ["t","2) add circuit breaker on ledger client (open at 50% errors / 30s) with bounded queue"],
+        ["t","3) shed load: pause non-critical consumers until lag < 50k"],
+        ["t","4) regression gate: chaos test replaying a 900ms downstream slowdown in staging before any retry-policy change ships"],
+        ["t","rollback: single config revert, no schema change · blast radius: payments-api only"]
+      ],
+      verifier:[
+        ["vv","ADVERSARIAL VERIFICATION ▸ challenge 1: could the 14:02 deploy be coincidence? — lag onset 14:04 tracks retry curve, not traffic (traffic flat) · challenge fails"],
+        ["vv","challenge 2: does the repair reintroduce dropped settlements? — idempotency keys verified on ledger writes; retries remain safe · challenge fails"],
+        ["vv","challenge 3: breaker threshold too tight for peak hour? — flagged: tune to 60% during 18:00 peak window · repair plan amended"],
+        ["ok","VERDICT: root cause VERIFIED · repair plan VERIFIED with 1 amendment"]
+      ]
+    },
+    verdict:{
+      root:"Retry storm: the 14:02 change raised ledger-client retries from 2 to 5 and removed backoff, so a transient 900ms slowdown self-amplified into pool saturation and cascading timeouts.",
+      repair:["Restore exponential backoff with jitter; cap retries at 2","Add circuit breaker on the ledger client (amended threshold: 60% at peak)","Shed load by pausing non-critical consumers until lag clears","Gate future retry-policy changes behind a staging chaos replay"],
+      confidence:"94%"
+    }
+  },
+  {
+    id:"checkout",
+    label:"Checkout service — HTTP 500s after a routine deploy",
+    signal:"error rate 0% → 34% on /checkout · deploy 09:41 · no infra alerts",
+    steps:{
+      controller:[
+        ["t","[signal] alert: checkout-api HTTP 500 rate 34% starting 09:43 · infra nominal"],
+        ["ag","MISSION CONTROLLER ▸ incident INC-1051 opened · class: deploy-regression · severity: SEV-2"],
+        ["ag","dispatching Codebase Analyst — deploy diff is the prime suspect until cleared"]
+      ],
+      analyst:[
+        ["ag","CODEBASE ANALYST ▸ deploy 09:41 touched pricing module + feature-flag config"],
+        ["t","stack traces: NullPointerException at PricingEngine.applyDiscount, only for carts with promo codes"],
+        ["t","flag state: promo_engine_v2 enabled 09:41 for 100% of traffic (intended: 5% canary)"],
+        ["t","evidence pack sealed: stack traces, flag history, deploy manifest"]
+      ],
+      hypothesis:[
+        ["ag","FAILURE HYPOTHESIS ▸ H1 (0.83): v2 pricing path dereferences a discount object the v1 cart shape doesn't populate"],
+        ["ag","H2 (0.22): config value missing in prod environment — would fail for all carts, not promo-only"],
+        ["ag","H3 (0.12): bad deploy artifact — would not correlate so cleanly with promo carts"],
+        ["t","discriminator for H1: non-promo carts on v2 path should succeed"]
+      ],
+      rootcause:[
+        ["ag","ROOT-CAUSE ▸ non-promo carts on v2: 100% success ✓ · promo carts: 100% NPE at the same line"],
+        ["t","H2/H3 rejected by the promo-only pattern"],
+        ["ok","ROOT CAUSE: promo_engine_v2 reads discount.appliedRate, which legacy carts leave null; the flag was set to 100% instead of the intended 5% canary, exposing every promo checkout at once"]
+      ],
+      repair:[
+        ["ag","REPAIR ▸ plan drafted (4 steps):"],
+        ["t","1) immediate: set promo_engine_v2 to 0% — restores v1 path, errors clear in one flag flip"],
+        ["t","2) null-guard + default rate in PricingEngine; backfill appliedRate for legacy carts"],
+        ["t","3) re-enable at 5% canary with automatic rollback on error-rate delta > 1%"],
+        ["t","4) regression gate: contract test covering v1-shaped carts against the v2 engine in CI"],
+        ["t","rollback: flag flip · blast radius: checkout pricing only"]
+      ],
+      verifier:[
+        ["vv","ADVERSARIAL VERIFICATION ▸ challenge 1: is the flag the cause or a bystander? — error onset aligns to the minute with flag change; code path confirms · challenge fails"],
+        ["vv","challenge 2: does the null-guard mask a pricing error? — guard defaults to the v1 rate and logs every invocation for audit · challenge fails"],
+        ["vv","challenge 3: canary auto-rollback tested? — not yet · repair plan amended: dry-run rollback in staging first"],
+        ["ok","VERDICT: root cause VERIFIED · repair plan VERIFIED with 1 amendment"]
+      ]
+    },
+    verdict:{
+      root:"promo_engine_v2 dereferences a discount field that legacy carts leave null; a flag set to 100% instead of a 5% canary exposed every promo checkout simultaneously.",
+      repair:["Flip promo_engine_v2 to 0% immediately to restore the v1 path","Null-guard with v1-rate default + audit logging; backfill legacy carts","Re-enable at 5% canary with auto-rollback (after a staging rollback dry-run)","Add a CI contract test: v1-shaped carts against the v2 engine"],
+      confidence:"96%"
+    }
+  },
+  {
+    id:"kyc",
+    label:"Document pipeline — verification cases stalling silently",
+    signal:"case completion 98% → 71% · no errors logged · oldest case age 31h",
+    steps:{
+      controller:[
+        ["t","[signal] watchdog: case completion rate fell to 71% over 6h · zero error logs · cases ageing silently"],
+        ["ag","MISSION CONTROLLER ▸ incident INC-1056 opened · class: silent-stall · severity: SEV-3 (rising)"],
+        ["ag","dispatching Codebase Analyst — silent failures hide in state, not in logs"]
+      ],
+      analyst:[
+        ["ag","CODEBASE ANALYST ▸ stalled cases share one state: AWAITING_VERIFICATION, entered via vendor-B document check"],
+        ["t","vendor-B API: returning HTTP 200 with status=PENDING since 02:15 (their own incident, unannounced)"],
+        ["t","pipeline design: no timeout or max-wait on AWAITING_VERIFICATION; no requeue path exists"],
+        ["t","evidence pack sealed: state histogram, vendor response samples, workflow definition"]
+      ],
+      hypothesis:[
+        ["ag","FAILURE HYPOTHESIS ▸ H1 (0.81): vendor-B soft-outage — PENDING responses park cases in a state with no exit"],
+        ["ag","H2 (0.27): queue consumer died — would stall all states, not one vendor path"],
+        ["ag","H3 (0.15): database write failures — would log errors; none exist"],
+        ["t","discriminator for H1: cases on vendor-A path should complete normally"]
+      ],
+      rootcause:[
+        ["ag","ROOT-CAUSE ▸ vendor-A path completion: 99.2% ✓ · vendor-B path: 4% — H1 discriminator holds"],
+        ["t","H2/H3 rejected by the single-vendor pattern"],
+        ["ok","ROOT CAUSE: vendor-B returns PENDING indefinitely during its outage; the workflow has no max-wait, timeout, or fallback vendor routing for AWAITING_VERIFICATION, so cases park forever — silently, because nothing technically 'failed'"]
+      ],
+      repair:[
+        ["ag","REPAIR ▸ plan drafted (4 steps):"],
+        ["t","1) add max-wait (30 min) on AWAITING_VERIFICATION → auto-route to vendor-A or human review"],
+        ["t","2) backfill: requeue the 412 parked cases through the new path with audit notes"],
+        ["t","3) vendor health signal: alert when a vendor's PENDING rate exceeds 20% over 15 min"],
+        ["t","4) regression gate: simulate a PENDING-forever vendor in staging; pipeline must degrade, not stall"],
+        ["t","rollback: config-only · blast radius: verification routing only"]
+      ],
+      verifier:[
+        ["vv","ADVERSARIAL VERIFICATION ▸ challenge 1: could cases be legitimately slow, not stalled? — age distribution is bimodal; the parked cohort never advances state · challenge fails"],
+        ["vv","challenge 2: does rerouting break compliance ordering? — audit trail preserves original vendor attempt + reroute reason · challenge fails"],
+        ["vv","challenge 3: 30-min max-wait too aggressive for genuinely slow checks? — amended: 30 min for standard tier, 4h for enhanced due diligence"],
+        ["ok","VERDICT: root cause VERIFIED · repair plan VERIFIED with 1 amendment"]
+      ]
+    },
+    verdict:{
+      root:"Vendor-B's soft outage returns PENDING indefinitely, and the workflow state AWAITING_VERIFICATION has no max-wait, timeout, or fallback routing — so cases park forever without a single error being logged.",
+      repair:["Add max-wait to AWAITING_VERIFICATION (30 min standard / 4h enhanced tier) with auto-reroute","Backfill the 412 parked cases through the new path with audit notes","Alert on vendor PENDING-rate anomalies (>20% over 15 min)","Stage a PENDING-forever vendor simulation as a standing regression gate"],
+      confidence:"93%"
+    }
+  }
+];
+
+const pipelineEl = document.getElementById('pipeline');
+const cardsEl = document.getElementById('agentCards');
+const logEl = document.getElementById('log');
+const verdictEl = document.getElementById('verdict');
+const selectEl = document.getElementById('incident');
+const runBtn = document.getElementById('runBtn');
+const resetBtn = document.getElementById('resetBtn');
+
+AGENTS.forEach(a=>{
+  const d=document.createElement('div'); d.className='agent'; d.id='agent-'+a.id;
+  d.innerHTML='<div class="an">AGENT '+a.n+'</div><div class="at">'+a.name+'</div><div class="as">idle</div>';
+  pipelineEl.appendChild(d);
+  const c=document.createElement('div'); c.className='card';
+  c.innerHTML='<div class="an">AGENT '+a.n+' · '+a.role.toUpperCase()+'</div><h3>'+a.name+'</h3><p>'+a.desc+'</p>';
+  cardsEl.appendChild(c);
+});
+INCIDENTS.forEach(i=>{
+  const o=document.createElement('option'); o.value=i.id; o.textContent=i.label; selectEl.appendChild(o);
+});
+
+let timers=[];
+function clearTimers(){ timers.forEach(clearTimeout); timers=[]; }
+function setAgent(id,state,text){
+  const el=document.getElementById('agent-'+id);
+  el.classList.remove('active','done','challenged');
+  if(state) el.classList.add(state);
+  el.querySelector('.as').textContent=text;
+}
+function writeLog(cls,text){
+  const line=document.createElement('div');
+  if(cls) line.className=cls;
+  line.textContent=text;
+  logEl.appendChild(line);
+  logEl.scrollTop=logEl.scrollHeight;
+}
+function reset(){
+  clearTimers();
+  AGENTS.forEach(a=>setAgent(a.id,'','idle'));
+  logEl.innerHTML='';
+  verdictEl.className='verdict'; verdictEl.innerHTML='';
+  runBtn.disabled=false;
+  const inc=INCIDENTS.find(i=>i.id===selectEl.value);
+  writeLog('t','SENTINEL console ready.');
+  writeLog('t','incident loaded: '+inc.label);
+  writeLog('warn','signal: '+inc.signal);
+  writeLog('t','press "Run analysis" to dispatch the pipeline.');
+}
+function run(){
+  reset(); runBtn.disabled=true;
+  const inc=INCIDENTS.find(i=>i.id===selectEl.value);
+  let delay=500;
+  AGENTS.forEach(a=>{
+    const lines=inc.steps[a.id];
+    timers.push(setTimeout(()=>setAgent(a.id,'active','working…'),delay));
+    lines.forEach(line=>{
+      delay+=620;
+      timers.push(setTimeout(()=>writeLog(line[0],line[1]),delay));
+    });
+    delay+=350;
+    const doneState = a.id==='verifier' ? 'done' : 'done';
+    timers.push(setTimeout(()=>setAgent(a.id,doneState, a.id==='verifier' ? 'verified' : 'complete'),delay));
+  });
+  delay+=600;
+  timers.push(setTimeout(()=>{
+    const v=inc.verdict;
+    verdictEl.innerHTML='<h3>Incident report — '+inc.label+'</h3><div class="vgrid">'
+      +'<div class="vbox"><div class="vt">Verified root cause</div><p>'+v.root+'</p></div>'
+      +'<div class="vbox"><div class="vt">Repair plan</div><ul>'+v.repair.map(r=>'<li>'+r+'</li>').join('')+'</ul></div>'
+      +'<div class="vbox"><div class="vt">Adversarial verification</div><p>Challenged on causation, side effects, and threshold safety. Conclusion survived all challenges; repair plan carries the verifier amendments noted in the log.</p></div>'
+      +'<div class="vbox"><div class="vt">Confidence</div><p class="conf">'+v.confidence+'</p><p style="color:var(--dim);font-size:13px">Above the 85% auto-accept threshold — no human escalation required. The full evidence trail is attached to the incident state.</p></div>'
+      +'</div>';
+    verdictEl.className='verdict show';
+    runBtn.disabled=false;
+  },delay));
+}
+runBtn.addEventListener('click',run);
+resetBtn.addEventListener('click',reset);
+selectEl.addEventListener('change',reset);
+reset();
+</script>
+</body>
+</html>
